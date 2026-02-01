@@ -14,7 +14,7 @@ export default class OpenClawPlugin extends Plugin {
     await this.loadSettings();
 
     this.api = new OpenClawAPI(this.settings);
-    this.actionExecutor = new ActionExecutor(this.app);
+    this.actionExecutor = new ActionExecutor(this.app, () => this.settings);
 
     // Register the chat view
     this.registerView(OPENCLAW_VIEW_TYPE, (leaf) => new OpenClawView(leaf, this));

@@ -52,6 +52,33 @@ export class OpenClawSettingTab extends PluginSettingTab {
           })
       );
 
+    containerEl.createEl("h3", { text: "Audit Log" });
+
+    new Setting(containerEl)
+      .setName("Enable audit logging")
+      .setDesc("Log all file actions to a markdown file for review")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.auditLogEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.auditLogEnabled = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Audit log path")
+      .setDesc("Path to the audit log file (relative to vault root)")
+      .addText((text) =>
+        text
+          .setPlaceholder("OpenClaw/audit-log.md")
+          .setValue(this.plugin.settings.auditLogPath)
+          .onChange(async (value) => {
+            this.plugin.settings.auditLogPath = value || "OpenClaw/audit-log.md";
+            await this.plugin.saveSettings();
+          })
+      );
+
     containerEl.createEl("h3", { text: "Connection Test" });
 
     const testContainer = containerEl.createDiv({ cls: "openclaw-test-container" });

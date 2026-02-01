@@ -2,12 +2,16 @@ export interface OpenClawSettings {
   gatewayUrl: string;
   gatewayToken: string;
   showActionsInChat: boolean;
+  auditLogEnabled: boolean;
+  auditLogPath: string;
 }
 
 export const DEFAULT_SETTINGS: OpenClawSettings = {
   gatewayUrl: "http://127.0.0.1:18789",
   gatewayToken: "",
   showActionsInChat: false,
+  auditLogEnabled: false,
+  auditLogPath: "OpenClaw/audit-log.md",
 };
 
 export type OpenClawAction =

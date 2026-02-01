@@ -1,5 +1,5 @@
-import { App, TFile, Notice, Modal, Setting } from "obsidian";
-import { OpenClawAction } from "./types";
+import { App, TFile, TFolder, Notice, Modal } from "obsidian";
+import { OpenClawAction, OpenClawSettings } from "./types";
 
 // Actions that require user confirmation before executing
 const DESTRUCTIVE_ACTIONS = ["deleteFile", "updateFile", "renameFile"];
@@ -79,7 +79,10 @@ class ConfirmActionModal extends Modal {
 }
 
 export class ActionExecutor {
-  constructor(private app: App) {}
+  constructor(
+    private app: App,
+    private getSettings: () => OpenClawSettings
+  ) {}
 
   async execute(actions: OpenClawAction[]): Promise<{ success: number; failed: number; skipped: number }> {
     let success = 0;
@@ -96,15 +99,18 @@ export class ActionExecutor {
           
           if (!confirmed) {
             skipped++;
+            await this.logAction(action, "skipped");
             new Notice(`OpenClaw: Skipped ${action.action}`);
             continue;
           }
         }
 
         await this.executeOne(action);
+        await this.logAction(action, "success");
         success++;
       } catch (err) {
         console.error("Action failed:", action, err);
+        await this.logAction(action, "failed", err instanceof Error ? err.message : String(err));
         failed++;
       }
     }
@@ -117,6 +123,69 @@ export class ActionExecutor {
     }
 
     return { success, failed, skipped };
+  }
+
+  private async logAction(
+    action: OpenClawAction,
+    status: "success" | "failed" | "skipped",
+    error?: string
+  ): Promise<void> {
+    const settings = this.getSettings();
+    if (!settings.auditLogEnabled) return;
+
+    const { vault } = this.app;
+    const logPath = settings.auditLogPath;
+    const timestamp = new Date().toISOString();
+    
+    // Format the log entry
+    const statusEmoji = status === "success" ? "✅" : status === "failed" ? "❌" : "⏭️";
+    let entry = `\n| ${timestamp} | ${statusEmoji} ${status} | \`${action.action}\` | `;
+    
+    switch (action.action) {
+      case "createFile":
+      case "deleteFile":
+      case "openFile":
+        entry += `\`${action.path}\` |`;
+        break;
+      case "updateFile":
+      case "appendToFile":
+        entry += `\`${action.path}\` |`;
+        break;
+      case "renameFile":
+        entry += `\`${action.path}\` → \`${action.newPath}\` |`;
+        break;
+      default:
+        entry += `${JSON.stringify(action)} |`;
+    }
+
+    if (error) {
+      entry += ` ${error}`;
+    }
+
+    // Get or create the log file
+    let logFile = vault.getAbstractFileByPath(logPath);
+    
+    if (!logFile) {
+      // Create parent folders if needed
+      const folderPath = logPath.substring(0, logPath.lastIndexOf("/"));
+      if (folderPath) {
+        const folder = vault.getAbstractFileByPath(folderPath);
+        if (!folder) {
+          await vault.createFolder(folderPath);
+        }
+      }
+      
+      // Create the log file with header
+      const header = `# OpenClaw Audit Log
+
+| Timestamp | Status | Action | Details |
+|-----------|--------|--------|---------|`;
+      await vault.create(logPath, header + entry);
+    } else if (logFile instanceof TFile) {
+      // Append to existing log
+      const content = await vault.read(logFile);
+      await vault.modify(logFile, content + entry);
+    }
   }
 
   private getActionDescription(action: OpenClawAction): string {
@@ -140,6 +209,14 @@ export class ActionExecutor {
         const exists = vault.getAbstractFileByPath(action.path);
         if (exists) {
           throw new Error(`File already exists: ${action.path}`);
+        }
+        // Create parent folders if needed
+        const folderPath = action.path.substring(0, action.path.lastIndexOf("/"));
+        if (folderPath) {
+          const folder = vault.getAbstractFileByPath(folderPath);
+          if (!folder) {
+            await vault.createFolder(folderPath);
+          }
         }
         await vault.create(action.path, action.content);
         break;
