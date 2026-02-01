@@ -254,3 +254,130 @@
   border-radius: 3px;
   font-size: 12px;
 }
+
+/* Sync Settings */
+.openclaw-sync-paths {
+  margin: 12px 0;
+}
+
+.openclaw-sync-path-item {
+  background: var(--background-secondary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.openclaw-sync-path-item .setting-item {
+  border: none;
+  padding: 0;
+}
+
+.openclaw-sync-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.openclaw-sync-status {
+  font-size: 13px;
+}
+
+/* Conflict Modal */
+.openclaw-conflict-modal {
+  max-width: 700px;
+}
+
+.openclaw-conflict-desc {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.openclaw-conflict-comparison {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.openclaw-conflict-side {
+  flex: 1;
+  background: var(--background-secondary);
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.openclaw-conflict-side h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.openclaw-conflict-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+
+.openclaw-conflict-diff-toggle {
+  margin-bottom: 12px;
+}
+
+.openclaw-conflict-diff {
+  display: none;
+  gap: 16px;
+  margin-bottom: 16px;
+  max-height: 300px;
+}
+
+.openclaw-diff-pane {
+  flex: 1;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.openclaw-diff-pane h4 {
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--background-modifier-border);
+  font-size: 12px;
+}
+
+.openclaw-diff-content {
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  max-height: 250px;
+  font-size: 12px;
+}
+
+.openclaw-diff-content code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.openclaw-conflict-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.openclaw-btn-primary {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.openclaw-btn-primary:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.openclaw-btn-secondary {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
