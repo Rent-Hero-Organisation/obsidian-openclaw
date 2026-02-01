@@ -10,6 +10,7 @@ Chat with OpenClaw directly from Obsidian. Create, edit, and manage notes throug
 - **Markdown rendering** - Responses render as proper markdown
 - **Secure token storage** - Uses OS keychain when available
 - **Audit logging** - Optional logging of all file actions
+- **Two-way sync** - Sync notes between your vault and the OpenClaw gateway
 
 ## Installation
 
@@ -178,6 +179,57 @@ The audit log records:
 - Action type
 - File paths affected
 
+## File Sync
+
+Sync notes between your Obsidian vault and the OpenClaw gateway. This enables two-way synchronization so notes created or edited in either location stay in sync.
+
+### Prerequisites
+
+The sync feature requires running the sync server on your gateway:
+
+```bash
+# Start the sync server (uses same token as gateway)
+SYNC_TOKEN="your-gateway-token" \
+node /data/clawdbot/skills/obsidian-sync/scripts/sync-server.mjs
+```
+
+Or run as a systemd service for persistence — see the skill documentation.
+
+### Setup
+
+1. Open Settings → OpenClaw
+2. Enable **Enable sync**
+3. Set **Sync server URL** (default: `http://127.0.0.1:18790`)
+4. Configure **Sync paths** — map remote folders to local vault folders
+5. Click **Test Connection** to verify
+
+### Sync Paths
+
+Configure which folders to sync:
+
+| Remote Path | Local Path | Description |
+|-------------|------------|-------------|
+| `notes` | `OpenClaw/Notes` | Gateway notes folder |
+| `memory` | `OpenClaw/Memory` | Agent memory/logs |
+
+### Conflict Resolution
+
+When a file is modified in both locations:
+
+- **Ask each time** — Shows a modal with both versions, optional side-by-side diff
+- **Prefer local** — Obsidian version wins
+- **Prefer remote** — Gateway version wins
+
+### Commands
+
+- **Sync Now** (`Cmd/Ctrl+P` → "Sync Now") — Run sync manually
+
+### Auto-Sync
+
+Enable automatic sync every 5/15/30/60 minutes in settings. During auto-sync:
+- If conflict behavior is "Ask", conflicts are skipped
+- Use manual sync to resolve skipped conflicts
+
 ## Configuration
 
 | Setting | Description | Default |
@@ -187,6 +239,10 @@ The audit log records:
 | Show actions in chat | Display action indicators | `false` |
 | Enable audit logging | Log file actions to markdown | `false` |
 | Audit log path | Path for the audit log | `OpenClaw/audit-log.md` |
+| Enable sync | Enable file synchronization | `false` |
+| Sync server URL | Sync server address | `http://127.0.0.1:18790` |
+| Sync interval | Auto-sync frequency | Manual only |
+| Conflict behavior | How to handle conflicts | Ask each time |
 
 ## OpenClaw Setup
 
