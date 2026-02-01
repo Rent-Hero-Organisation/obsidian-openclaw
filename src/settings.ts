@@ -1,6 +1,7 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type OpenClawPlugin from "../main";
 import { secureTokenStorage } from "./secureStorage";
+import { SyncPathConfig } from "./types";
 
 export class OpenClawSettingTab extends PluginSettingTab {
   constructor(app: App, private plugin: OpenClawPlugin) {
@@ -11,7 +12,8 @@ export class OpenClawSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "OpenClaw Settings" });
+    // ===== CHAT SETTINGS =====
+    containerEl.createEl("h2", { text: "Chat Settings" });
 
     new Setting(containerEl)
       .setName("Gateway URL")
@@ -21,7 +23,6 @@ export class OpenClawSettingTab extends PluginSettingTab {
           .setPlaceholder("http://127.0.0.1:18789")
           .setValue(this.plugin.settings.gatewayUrl)
           .onChange(async (value) => {
-            // Strip trailing slashes to prevent 405 errors
             this.plugin.settings.gatewayUrl = value.replace(/\/+$/, "");
             await this.plugin.saveSettings();
           })
@@ -33,20 +34,15 @@ export class OpenClawSettingTab extends PluginSettingTab {
       .setName("Gateway Token")
       .setDesc("Authentication token for the OpenClaw gateway");
 
-    // Show current security status
     const statusEl = containerEl.createDiv({ cls: "openclaw-token-status" });
     const statusIcon = statusInfo.secure ? "🔒" : "⚠️";
     statusEl.innerHTML = `<span class="openclaw-status-${statusInfo.secure ? 'secure' : 'insecure'}">${statusIcon} ${statusInfo.description}</span>`;
 
-    // If using env var, just show info (no input needed)
     if (statusInfo.method === "envVar") {
       tokenSetting.addButton((btn) =>
-        btn
-          .setButtonText("Using Environment Variable")
-          .setDisabled(true)
+        btn.setButtonText("Using Environment Variable").setDisabled(true)
       );
     } else {
-      // Get current token for display
       const currentToken = secureTokenStorage.getToken(
         this.plugin.settings.gatewayTokenEncrypted,
         this.plugin.settings.gatewayTokenPlaintext
@@ -78,6 +74,7 @@ export class OpenClawSettingTab extends PluginSettingTab {
           })
       );
 
+    // ===== AUDIT LOG =====
     containerEl.createEl("h3", { text: "Audit Log" });
 
     new Setting(containerEl)
@@ -105,10 +102,135 @@ export class OpenClawSettingTab extends PluginSettingTab {
           })
       );
 
-    containerEl.createEl("h3", { text: "Connection Test" });
+    // ===== SYNC SETTINGS =====
+    containerEl.createEl("h2", { text: "Sync Settings" });
+
+    new Setting(containerEl)
+      .setName("Enable sync")
+      .setDesc("Sync files between your vault and the OpenClaw gateway")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.syncEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.syncEnabled = value;
+            await this.plugin.saveSettings();
+            this.display(); // Refresh to show/hide sync options
+          })
+      );
+
+    if (this.plugin.settings.syncEnabled) {
+      new Setting(containerEl)
+        .setName("Sync server URL")
+        .setDesc("URL of the sync server (default port: 18790)")
+        .addText((text) =>
+          text
+            .setPlaceholder("http://127.0.0.1:18790")
+            .setValue(this.plugin.settings.syncServerUrl)
+            .onChange(async (value) => {
+              this.plugin.settings.syncServerUrl = value.replace(/\/+$/, "");
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName("Sync interval")
+        .setDesc("How often to sync automatically (0 = manual only)")
+        .addDropdown((dropdown) =>
+          dropdown
+            .addOption("0", "Manual only")
+            .addOption("5", "Every 5 minutes")
+            .addOption("15", "Every 15 minutes")
+            .addOption("30", "Every 30 minutes")
+            .addOption("60", "Every hour")
+            .setValue(String(this.plugin.settings.syncInterval))
+            .onChange(async (value) => {
+              this.plugin.settings.syncInterval = parseInt(value);
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName("Conflict behavior")
+        .setDesc("How to handle conflicts when a file is modified in both places")
+        .addDropdown((dropdown) =>
+          dropdown
+            .addOption("ask", "Ask each time")
+            .addOption("preferLocal", "Prefer local (Obsidian)")
+            .addOption("preferRemote", "Prefer remote (Gateway)")
+            .setValue(this.plugin.settings.syncConflictBehavior)
+            .onChange(async (value) => {
+              this.plugin.settings.syncConflictBehavior = value as "ask" | "preferLocal" | "preferRemote";
+              await this.plugin.saveSettings();
+            })
+        );
+
+      // Sync paths
+      containerEl.createEl("h4", { text: "Sync Paths" });
+      containerEl.createEl("p", { 
+        text: "Configure which folders to sync between the gateway and your vault.",
+        cls: "setting-item-description"
+      });
+
+      const pathsContainer = containerEl.createDiv({ cls: "openclaw-sync-paths" });
+      
+      this.plugin.settings.syncPaths.forEach((pathConfig, index) => {
+        this.renderSyncPath(pathsContainer, pathConfig, index);
+      });
+
+      new Setting(containerEl)
+        .addButton((btn) =>
+          btn
+            .setButtonText("Add Sync Path")
+            .onClick(async () => {
+              this.plugin.settings.syncPaths.push({
+                remotePath: "",
+                localPath: "",
+                enabled: true,
+              });
+              await this.plugin.saveSettings();
+              this.display();
+            })
+        );
+
+      // Sync actions
+      containerEl.createEl("h4", { text: "Sync Actions" });
+
+      const syncActionsContainer = containerEl.createDiv({ cls: "openclaw-sync-actions" });
+      
+      const testBtn = syncActionsContainer.createEl("button", { text: "Test Connection" });
+      const syncNowBtn = syncActionsContainer.createEl("button", { text: "Sync Now", cls: "mod-cta" });
+      const statusSpan = syncActionsContainer.createEl("span", { cls: "openclaw-sync-status" });
+
+      testBtn.addEventListener("click", async () => {
+        statusSpan.setText("Testing...");
+        const result = await this.plugin.syncService.testConnection();
+        if (result.ok) {
+          statusSpan.setText("✓ Connected");
+          statusSpan.addClass("openclaw-test-success");
+        } else {
+          statusSpan.setText(`✗ ${result.error}`);
+          statusSpan.addClass("openclaw-test-error");
+        }
+      });
+
+      syncNowBtn.addEventListener("click", async () => {
+        statusSpan.setText("Syncing...");
+        try {
+          await this.plugin.runSync();
+          statusSpan.setText("✓ Sync complete");
+          statusSpan.addClass("openclaw-test-success");
+        } catch (err) {
+          statusSpan.setText(`✗ ${err instanceof Error ? err.message : "Sync failed"}`);
+          statusSpan.addClass("openclaw-test-error");
+        }
+      });
+    }
+
+    // ===== CONNECTION TEST =====
+    containerEl.createEl("h3", { text: "Chat Connection Test" });
 
     const testContainer = containerEl.createDiv({ cls: "openclaw-test-container" });
-    const testBtn = testContainer.createEl("button", { text: "Test Connection" });
+    const testBtn = testContainer.createEl("button", { text: "Test Chat Connection" });
     const testResult = testContainer.createEl("span", { cls: "openclaw-test-result" });
 
     testBtn.addEventListener("click", async () => {
@@ -124,7 +246,7 @@ export class OpenClawSettingTab extends PluginSettingTab {
       }
     });
 
-    // Security info section
+    // ===== SECURITY INFO =====
     containerEl.createEl("h3", { text: "Security Info" });
     
     const securityInfo = containerEl.createDiv({ cls: "openclaw-security-info" });
@@ -136,5 +258,49 @@ export class OpenClawSettingTab extends PluginSettingTab {
         <li><strong>Plaintext</strong> — Stored in plugin settings. Avoid syncing <code>.obsidian/plugins/obsidian-openclaw/</code></li>
       </ol>
     `;
+  }
+
+  private renderSyncPath(container: HTMLElement, pathConfig: SyncPathConfig, index: number): void {
+    const pathEl = container.createDiv({ cls: "openclaw-sync-path-item" });
+
+    new Setting(pathEl)
+      .setName(`Path ${index + 1}`)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(pathConfig.enabled)
+          .setTooltip("Enable/disable this sync path")
+          .onChange(async (value) => {
+            this.plugin.settings.syncPaths[index].enabled = value;
+            await this.plugin.saveSettings();
+          })
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("Remote path (e.g., notes)")
+          .setValue(pathConfig.remotePath)
+          .onChange(async (value) => {
+            this.plugin.settings.syncPaths[index].remotePath = value;
+            await this.plugin.saveSettings();
+          })
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("Local path (e.g., OpenClaw/Notes)")
+          .setValue(pathConfig.localPath)
+          .onChange(async (value) => {
+            this.plugin.settings.syncPaths[index].localPath = value;
+            await this.plugin.saveSettings();
+          })
+      )
+      .addButton((btn) =>
+        btn
+          .setIcon("trash")
+          .setTooltip("Remove this sync path")
+          .onClick(async () => {
+            this.plugin.settings.syncPaths.splice(index, 1);
+            await this.plugin.saveSettings();
+            this.display();
+          })
+      );
   }
 }
