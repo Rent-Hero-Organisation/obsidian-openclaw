@@ -1,0 +1,26 @@
+{
+  "port": 18791,
+  "domain": "rennie.yourdomain.com",
+  "github": {
+    "clientId": "YOUR_GITHUB_OAUTH_CLIENT_ID",
+    "clientSecret": "YOUR_GITHUB_OAUTH_CLIENT_SECRET",
+    "org": "Your-GitHub-Org"
+  },
+  "gateway": {
+    "token": "YOUR_OPENCLAW_GATEWAY_TOKEN",
+    "port": 18789,
+    "syncPort": 18790
+  },
+  "jwt": {
+    "secretPath": "/home/ubuntu/rennie-auth/.jwt-secret",
+    "expiry": "30d"
+  },
+  "branding": {
+    "name": "Rennie",
+    "emoji": "🏠",
+    "tagline": "Your AI-powered knowledge hub",
+    "org": "YourOrg",
+    "pluginRepo": "Your-Org/obsidian-rennie",
+    "pluginId": "obsidian-renthero-sync"
+  }
+}
