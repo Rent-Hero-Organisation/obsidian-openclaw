@@ -1,9 +1,9 @@
 {
-  "id": "obsidian-openclaw",
-  "name": "OpenClaw",
-  "version": "0.4.1",
+  "id": "obsidian-renthero-sync",
+  "name": "RentHero Sync",
+  "version": "0.5.0",
   "minAppVersion": "1.0.0",
-  "description": "Chat with OpenClaw from Obsidian. Create, edit, and manage notes through conversation.",
-  "author": "Andy Bold",
+  "description": "Team vault sync & AI chat for RentHero. Chat with Thad, sync research docs, decisions, and project files bidirectionally.",
+  "author": "RentHero (forked from Andy Bold's obsidian-openclaw)",
   "isDesktopOnly": false
 }
