@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type RenniePlugin from "../main";
 import { secureTokenStorage } from "./secureStorage";
-import { SyncPathConfig } from "./types";
+import { SyncPathConfig, RENTHERO_SYNC_PATHS } from "./types";
 
 export class RennieSettingTab extends PluginSettingTab {
   constructor(app: App, private plugin: RenniePlugin) {
@@ -94,10 +94,10 @@ export class RennieSettingTab extends PluginSettingTab {
       .setDesc("Path to the audit log file (relative to vault root)")
       .addText((text) =>
         text
-          .setPlaceholder("Rennie/audit-log.md")
+          .setPlaceholder("RentHero/audit-log.md")
           .setValue(this.plugin.settings.auditLogPath)
           .onChange(async (value) => {
-            this.plugin.settings.auditLogPath = value || "Rennie/audit-log.md";
+            this.plugin.settings.auditLogPath = value || "RentHero/audit-log.md";
             await this.plugin.saveSettings();
           })
       );
@@ -164,33 +164,31 @@ export class RennieSettingTab extends PluginSettingTab {
             })
         );
 
-      // Sync paths
-      containerEl.createEl("h4", { text: "Sync Paths" });
+      // Sync paths — managed by RentHero, not user-editable
+      containerEl.createEl("h4", { text: "Sync Folders" });
       containerEl.createEl("p", { 
-        text: "Configure which folders to sync between the gateway and your vault.",
+        text: "Managed by RentHero. Toggle folders on/off — structure is shared across the team.",
         cls: "setting-item-description"
       });
+
+      // Ensure user's paths match the hardcoded set (handles plugin updates adding new paths)
+      this.ensureSyncPaths();
 
       const pathsContainer = containerEl.createDiv({ cls: "rennie-sync-paths" });
       
       this.plugin.settings.syncPaths.forEach((pathConfig, index) => {
-        this.renderSyncPath(pathsContainer, pathConfig, index);
+        new Setting(pathsContainer)
+          .setName(pathConfig.localPath)
+          .setDesc(`↔ server: ${pathConfig.remotePath}/`)
+          .addToggle((toggle) =>
+            toggle
+              .setValue(pathConfig.enabled)
+              .onChange(async (value) => {
+                this.plugin.settings.syncPaths[index].enabled = value;
+                await this.plugin.saveSettings();
+              })
+          );
       });
-
-      new Setting(containerEl)
-        .addButton((btn) =>
-          btn
-            .setButtonText("Add Sync Path")
-            .onClick(async () => {
-              this.plugin.settings.syncPaths.push({
-                remotePath: "",
-                localPath: "",
-                enabled: true,
-              });
-              await this.plugin.saveSettings();
-              this.display();
-            })
-        );
 
       // Sync actions
       containerEl.createEl("h4", { text: "Sync Actions" });
@@ -260,47 +258,34 @@ export class RennieSettingTab extends PluginSettingTab {
     `;
   }
 
-  private renderSyncPath(container: HTMLElement, pathConfig: SyncPathConfig, index: number): void {
-    const pathEl = container.createDiv({ cls: "rennie-sync-path-item" });
-
-    new Setting(pathEl)
-      .setName(`Path ${index + 1}`)
-      .addToggle((toggle) =>
-        toggle
-          .setValue(pathConfig.enabled)
-          .setTooltip("Enable/disable this sync path")
-          .onChange(async (value) => {
-            this.plugin.settings.syncPaths[index].enabled = value;
-            await this.plugin.saveSettings();
-          })
-      )
-      .addText((text) =>
-        text
-          .setPlaceholder("Remote path (e.g., notes)")
-          .setValue(pathConfig.remotePath)
-          .onChange(async (value) => {
-            this.plugin.settings.syncPaths[index].remotePath = value;
-            await this.plugin.saveSettings();
-          })
-      )
-      .addText((text) =>
-        text
-          .setPlaceholder("Local path (e.g., Rennie/Notes)")
-          .setValue(pathConfig.localPath)
-          .onChange(async (value) => {
-            this.plugin.settings.syncPaths[index].localPath = value;
-            await this.plugin.saveSettings();
-          })
-      )
-      .addButton((btn) =>
-        btn
-          .setIcon("trash")
-          .setTooltip("Remove this sync path")
-          .onClick(async () => {
-            this.plugin.settings.syncPaths.splice(index, 1);
-            await this.plugin.saveSettings();
-            this.display();
-          })
-      );
+  // Ensures user's sync paths match the hardcoded RentHero structure
+  // Preserves user's enabled/disabled toggles, adds new paths from updates
+  private ensureSyncPaths(): void {
+    const existing = new Map(
+      this.plugin.settings.syncPaths.map(p => [p.remotePath, p])
+    );
+    
+    let changed = false;
+    const updated: SyncPathConfig[] = [];
+    
+    for (const defaultPath of RENTHERO_SYNC_PATHS) {
+      const userPath = existing.get(defaultPath.remotePath);
+      if (userPath) {
+        // Keep user's enabled toggle, but enforce the local path from hardcoded config
+        updated.push({
+          ...defaultPath,
+          enabled: userPath.enabled,
+        });
+      } else {
+        // New path added in update — enable by default
+        updated.push({ ...defaultPath });
+        changed = true;
+      }
+    }
+    
+    if (changed || updated.length !== this.plugin.settings.syncPaths.length) {
+      this.plugin.settings.syncPaths = updated;
+      this.plugin.saveSettings();
+    }
   }
 }
