@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-openclaw",
-  "version": "0.1.0",
-  "description": "Chat with OpenClaw from Obsidian",
+  "name": "obsidian-renthero-sync",
+  "version": "0.5.0",
+  "description": "Team vault sync & AI chat for RentHero",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
