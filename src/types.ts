@@ -1,8 +1,23 @@
 export interface SyncPathConfig {
   remotePath: string;  // Path on Gateway (e.g., "notes")
-  localPath: string;   // Path in vault (e.g., "Rennie/Notes")
+  localPath: string;   // Path in vault (e.g., "RentHero/Notes")
   enabled: boolean;
 }
+
+// Hardcoded vault structure — update here, push to repo, everyone gets it
+export const RENTHERO_SYNC_PATHS: SyncPathConfig[] = [
+  { remotePath: "docs",      localPath: "RentHero/Docs",      enabled: true },
+  { remotePath: "repos",     localPath: "RentHero/Repos",     enabled: true },
+  { remotePath: "decisions", localPath: "RentHero/Decisions",  enabled: true },
+  { remotePath: "projects",  localPath: "RentHero/Projects",   enabled: true },
+  { remotePath: "notes",     localPath: "RentHero/Notes",      enabled: true },
+  { remotePath: "people",    localPath: "RentHero/People",     enabled: true },
+  { remotePath: "lessons",   localPath: "RentHero/Lessons",    enabled: true },
+  { remotePath: "templates", localPath: "RentHero/Templates",  enabled: true },
+  { remotePath: "inbox",     localPath: "RentHero/Inbox",      enabled: true },
+  { remotePath: "memory",    localPath: "RentHero/Memory",     enabled: true },
+  { remotePath: "handoffs",  localPath: "RentHero/Handoffs",   enabled: true },
+];
 
 export interface RennieSettings {
   gatewayUrl: string;
@@ -26,11 +41,11 @@ export const DEFAULT_SETTINGS: RennieSettings = {
   gatewayTokenPlaintext: "",
   showActionsInChat: false,
   auditLogEnabled: false,
-  auditLogPath: "Rennie/audit-log.md",
+  auditLogPath: "RentHero/audit-log.md",
   // Sync defaults
   syncEnabled: false,
   syncServerUrl: "http://127.0.0.1:18790",
-  syncPaths: [{ remotePath: "notes", localPath: "Rennie/Notes", enabled: true }],
+  syncPaths: [...RENTHERO_SYNC_PATHS],
   syncInterval: 0,
   syncConflictBehavior: "ask",
 };
